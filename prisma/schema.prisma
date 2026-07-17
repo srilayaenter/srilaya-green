@@ -1,0 +1,141 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Admin-only accounts. Customers check out as guests (cartId cookie) and
+// look up orders via /track — no customer accounts in v1.
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String?
+  image       String?
+  products    Product[]
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  title       String
+  description String?
+  imageUrl    String?
+  currency    String           @default("INR")
+  gstRate     Decimal          @db.Decimal(4, 2)
+  sku         String           @unique
+  active      Boolean          @default(true)
+  categoryId  String
+  category    Category         @relation(fields: [categoryId], references: [id])
+  variants    ProductVariant[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ProductVariant {
+  id          String      @id @default(cuid())
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size        String
+  price       Decimal     @db.Decimal(10, 2)
+  stock       Int         @default(100)
+  weightGrams Int         @default(500)
+  sku         String      @unique
+  imageUrl    String?
+  active      Boolean     @default(true)
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([productId, size])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  email     String?
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String         @id @default(cuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int            @default(1)
+  price     Decimal        @db.Decimal(10, 2)
+  gstRate   Decimal        @db.Decimal(4, 2)
+
+  @@unique([cartId, variantId])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  items             OrderItem[]
+  shipment          Shipment?
+  subtotal          Decimal     @db.Decimal(10, 2)
+  taxTotal          Decimal     @db.Decimal(10, 2)
+  shippingFee       Decimal     @db.Decimal(10, 2)
+  total             Decimal     @db.Decimal(10, 2)
+  currency          String      @default("INR")
+  status            String      @default("pending") // pending | cod_pending | paid | processing | shipped | delivered | cancelled
+  fulfillmentStatus String      @default("pending")
+  paymentMethod     String? // cod | razorpay
+  paymentId         String?
+
+  customerName String?
+  email        String?
+  phone        String?
+  address      String?
+  city         String?
+  state        String?
+  zipCode      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrderItem {
+  id        String         @id @default(cuid())
+  orderId   String
+  order     Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int
+  price     Decimal        @db.Decimal(10, 2)
+  gstRate   Decimal        @db.Decimal(4, 2)
+}
+
+model Shipment {
+  id                String    @id @default(cuid())
+  orderId           String    @unique
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courier           String
+  trackingNumber    String
+  status            String    @default("booked")
+  estimatedDelivery DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String   @unique
+  processedAt DateTime @default(now())
+}
