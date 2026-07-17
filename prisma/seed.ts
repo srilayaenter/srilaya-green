@@ -207,6 +207,68 @@ const products: {
       { size: "5L", price: 1099, weightGrams: 5250, sku: "SG-PURE-001-5L", stock: 25 },
     ],
   },
+  {
+    slug: "lavender-multi-purpose-enzyme-cleaner",
+    title: "Lavender Multi-Purpose Enzyme Cleaner",
+    description:
+      "A calming lavender-scented bioenzyme cleaner, fermented the same way as our citrus variant. Cuts grease and grime on floors, counters, and surfaces.",
+    categorySlug: "multi-purpose-cleaner",
+    sku: "SG-MPC-002",
+    gstRate: 18,
+    variants: [
+      { size: "500ml", price: 209, weightGrams: 550, sku: "SG-MPC-002-500", stock: 90 },
+      { size: "1L", price: 369, weightGrams: 1050, sku: "SG-MPC-002-1L", stock: 60 },
+    ],
+  },
+  {
+    slug: "natural-plant-growth-concentrate",
+    title: "Natural Plant Growth Concentrate",
+    description:
+      "A fermented bioenzyme concentrate formulated to encourage root and leaf growth. Dilute and water into soil every 2–3 weeks.",
+    categorySlug: "garden-compost-enzyme",
+    sku: "SG-GDN-002",
+    gstRate: 18,
+    variants: [
+      { size: "500ml", price: 249, weightGrams: 560, sku: "SG-GDN-002-500", stock: 70 },
+      { size: "1L", price: 429, weightGrams: 1080, sku: "SG-GDN-002-1L", stock: 45 },
+    ],
+  },
+  {
+    slug: "lavender-aloe-vera-handmade-soap",
+    title: "Lavender & Aloe Vera Handmade Soap",
+    description:
+      "Cold-processed handmade soap with lavender oil and aloe vera gel. Gentle daily cleansing with no synthetic fragrance.",
+    categorySlug: "bathing-soaps",
+    sku: "SG-SOAP-002",
+    gstRate: 18,
+    variants: [
+      { size: "100g", price: 99, weightGrams: 110, sku: "SG-SOAP-002-100", stock: 150 },
+      { size: "3-Pack (300g)", price: 269, weightGrams: 330, sku: "SG-SOAP-002-3PK", stock: 60 },
+    ],
+  },
+  {
+    slug: "herbal-shikakai-hair-powder",
+    title: "Herbal Shikakai Hair Powder",
+    description:
+      "Sun-dried shikakai pods ground into a fine powder, blended with a light bioenzyme extract. A traditional chemical-free alternative to shampoo.",
+    categorySlug: "hair-care",
+    sku: "SG-HAIR-003",
+    gstRate: 18,
+    variants: [
+      { size: "500g", price: 179, weightGrams: 520, sku: "SG-HAIR-003-500", stock: 60 },
+      { size: "1kg", price: 329, weightGrams: 1040, sku: "SG-HAIR-003-1KG", stock: 35 },
+    ],
+  },
+  {
+    slug: "herbal-baby-shampoo",
+    title: "Herbal Baby Shampoo",
+    description:
+      "Tear-free herbal shampoo formulated with a mild bioenzyme base and shikakai extract for delicate baby hair and scalp.",
+    categorySlug: "baby-care",
+    sku: "SG-BABY-003",
+    gstRate: 18,
+    variants: [{ size: "200ml", price: 219, weightGrams: 220, sku: "SG-BABY-003-200", stock: 65 }],
+  },
 ];
 
 async function main() {
