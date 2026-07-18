@@ -154,7 +154,7 @@ export default function CheckoutForm({
               {(
                 [
                   { value: "online", label: "Pay Online", desc: "UPI / Card / Razorpay", icon: "💳" },
-                  { value: "cod", label: "Cash on Delivery", desc: "Pay when order arrives", icon: "🛵" },
+                  { value: "cod", label: "Pay on Delivery", desc: "Cash or UPI when order arrives", icon: "🛵" },
                 ] as const
               ).map((opt) => (
                 <label

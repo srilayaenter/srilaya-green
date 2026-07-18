@@ -34,7 +34,15 @@ export default async function AdminOrdersPage() {
                   <p>{order.customerName || "—"}</p>
                   <p className="text-xs text-[#9E9E9E]">{order.email}</p>
                 </td>
-                <td className="px-6 py-4 text-sm capitalize text-[#424242]">{order.paymentMethod || "—"}</td>
+                <td className="px-6 py-4 text-sm text-[#424242]">
+                  {order.status === "cod_pending" ? (
+                    <span className="font-semibold text-blue-600">🛵 Pay on Delivery</span>
+                  ) : order.paymentMethod === "cod" && order.codPaymentMethod ? (
+                    <span className="font-semibold text-green-600">💰 COD · {order.codPaymentMethod.toUpperCase()}</span>
+                  ) : (
+                    <span className="capitalize">{order.paymentMethod || "—"}</span>
+                  )}
+                </td>
                 <td className="px-6 py-4 text-sm capitalize text-[#424242]">{order.status.replace("_", " ")}</td>
                 <td className="px-6 py-4 text-sm capitalize text-[#424242]">{order.fulfillmentStatus}</td>
                 <td className="px-6 py-4 text-right font-bold text-[#212121]">₹{toNum(order.total).toFixed(2)}</td>

@@ -122,6 +122,7 @@ export async function createOrder(formData: FormData): Promise<void> {
       city,
       state,
       zipCode,
+      isCod: true,
     });
     sendEmail({ to: email, subject: `Order Confirmed — #${orderId.slice(0, 8).toUpperCase()}`, html }).catch(() => {});
   }

@@ -97,6 +97,8 @@ model Order {
   fulfillmentStatus String      @default("pending")
   paymentMethod     String? // cod | razorpay
   paymentId         String?
+  codPaymentMethod  String? // "cash" | "upi" — recorded when COD is collected
+  codUpiRef         String? // UPI transaction ref / UTR (optional)
 
   customerName String?
   email        String?

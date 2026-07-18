@@ -25,7 +25,7 @@ export default async function CodConfirmPage({ params }: { params: { id: string 
           </div>
           <h1 className="text-2xl font-black text-[#212121]">Order Confirmed!</h1>
           <p className="text-[#8D6E63] text-sm mt-2">
-            Your order has been placed. Pay <strong>₹{toNum(order.total).toFixed(2)}</strong> in cash when your order arrives.
+            Your order is confirmed. Please keep <strong>₹{toNum(order.total).toFixed(2)}</strong> ready to pay on delivery — by <strong>Cash or UPI</strong>. No card machine will be available.
           </p>
           <div className="mt-4 bg-[#F5F5F5] rounded-xl px-4 py-3 inline-block">
             <p className="text-xs text-[#9E9E9E] uppercase font-bold tracking-wider">Order ID</p>
@@ -59,7 +59,7 @@ export default async function CodConfirmPage({ params }: { params: { id: string 
           <ul className="space-y-1 list-disc list-inside">
             <li>Our team will process your order within 24 hours.</li>
             <li>You&apos;ll receive a dispatch notification via email.</li>
-            <li>Keep ₹{toNum(order.total).toFixed(2)} ready for the delivery person.</li>
+            <li>Keep <strong>₹{toNum(order.total).toFixed(2)}</strong> ready to pay on delivery — by <strong>Cash or UPI</strong>. No card machine will be available.</li>
           </ul>
         </div>
 
