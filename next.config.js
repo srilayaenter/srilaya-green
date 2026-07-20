@@ -7,6 +7,10 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Enable Sentry instrumentation when SENTRY_DSN is set
+  experimental: {
+    instrumentationHook: true,
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "placehold.co" },

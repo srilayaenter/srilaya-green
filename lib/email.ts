@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 interface SendEmailParams {
   to: string;
@@ -22,7 +23,7 @@ async function attemptSend(params: SendEmailParams) {
 
 export async function sendEmail(params: SendEmailParams) {
   if (!resend) {
-    console.error("[email skipped — no RESEND_API_KEY]", params.subject);
+    logger.warn("Email skipped — no RESEND_API_KEY", { subject: params.subject });
     await logFailure(params, "RESEND_API_KEY not configured");
     return { success: false };
   }
@@ -36,7 +37,7 @@ export async function sendEmail(params: SendEmailParams) {
       return { success: true };
     } catch (err: any) {
       lastError = err;
-      console.error(`Email send attempt ${attempt}/${MAX} failed:`, err.message);
+      logger.warn(`Email send attempt ${attempt}/${MAX} failed`, { subject: params.subject, error: err.message });
       if (attempt < MAX) await new Promise(r => setTimeout(r, attempt * 1500));
     }
   }
@@ -51,6 +52,6 @@ async function logFailure(params: SendEmailParams, errorMessage: string) {
       data: { to: params.to, subject: params.subject, html: params.html, context: params.context ?? null, errorMessage },
     });
   } catch (err) {
-    console.error("Failed to log email failure:", err);
+    logger.error("Failed to log email failure to DB", { error: String(err) });
   }
 }
