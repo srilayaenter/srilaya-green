@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import ProductPurchaseSection from "@/components/ProductPurchaseSection";
 import ProductGallery from "@/components/ProductGallery";
 import ReviewsSection from "@/components/ReviewsSection";
+import PincodeCheck from "@/components/PincodeCheck";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { toNum } from "@/lib/decimal";
@@ -109,6 +110,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           ) : (
             <p className="text-[#9E9E9E]">No sizes currently available.</p>
           )}
+
+          <PincodeCheck />
         </div>
       </div>
 
