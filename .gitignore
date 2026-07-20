@@ -13,3 +13,6 @@ package-lock.json
 /test-results/
 /tests/report/
 /playwright-report/
+
+# Playwright auth state (contains session cookies)
+tests/e2e/.auth/
