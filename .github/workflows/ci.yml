@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [master, staging]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: Typecheck & lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      - name: TypeScript typecheck
+        run: pnpm exec tsc --noEmit
+
+  e2e:
+    name: E2E tests (staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/staging'
+    needs: typecheck
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package.json') }}
+
+      - name: Install Playwright (chromium only)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Install Playwright system deps (cached hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - name: Wait for Vercel deployment
+        id: preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA="${{ github.sha }}"
+          STABLE_URL="https://srilaya-green.vercel.app"
+          echo "Waiting for Vercel deployment (SHA: $SHA)..."
+
+          DEPLOY_FOUND=false
+          for i in $(seq 1 18); do
+            DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20" 2>/dev/null || echo "[]")
+            DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r 'map(select(.environment | ascii_downcase | test("preview|production"))) | first | .id // empty')
+            if [ -n "$DEPLOY_ID" ] && [ "$DEPLOY_ID" != "null" ]; then
+              echo "Found deployment $DEPLOY_ID (attempt $i)"
+              DEPLOY_FOUND=true
+              break
+            fi
+            echo "No deployment yet (attempt $i/18)"; sleep 10
+          done
+
+          if [ "$DEPLOY_FOUND" = "true" ]; then
+            for j in $(seq 1 36); do
+              STATE=$(gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" 2>/dev/null | jq -r 'first | .state // empty')
+              echo "  state=$STATE (poll $j/36)"
+              if   [ "$STATE" = "success" ]; then break
+              elif [ "$STATE" = "failure" ] || [ "$STATE" = "error" ]; then
+                echo "ERROR: Vercel build failed — aborting tests"; exit 1
+              fi
+              sleep 10
+            done
+          else
+            echo "WARNING: No GitHub Deployment found — proceeding with stable URL"
+          fi
+
+          echo "url=$STABLE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Run E2E tests
+        id: run
+        env:
+          TEST_BASE_URL: ${{ steps.preview.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          CI: "true"
+        run: pnpm exec playwright test --project=chromium --reporter=list
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: tests/report/
+          retention-days: 14
+
+      - name: Create issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          DATE=$(date -u '+%d %b %Y %H:%M UTC')
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          gh issue create \
+            --title "CI: E2E tests failed on ${{ github.ref_name }} (${COMMIT_SHORT}) — ${DATE}" \
+            --body "**Trigger:** Push to ${{ github.ref_name }}
+**Commit:** \`${COMMIT_SHORT}\` (${{ github.sha }})
+**Actions run:** ${RUN_URL}
+
+Check the Actions run for the Playwright HTML report and failure details." \
+            --label "bug" \
+            --repo "${{ github.repository }}" || true
