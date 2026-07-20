@@ -19,6 +19,12 @@ interface CheckoutFormProps {
   defaultEmail?: string;
 }
 
+interface CouponResult {
+  code: string;
+  discount: number;
+  message: string;
+}
+
 export default function CheckoutForm({
   cartItems,
   subtotal,
@@ -28,10 +34,40 @@ export default function CheckoutForm({
 }: CheckoutFormProps) {
   const [paymentMethod, setPaymentMethod] = useState<"online" | "cod">("online");
   const [isPending, setIsPending] = useState(false);
-  const total = subtotal + taxTotal + shippingFee;
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<CouponResult | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const baseTotal = subtotal + taxTotal + shippingFee;
+  const discount = coupon?.discount ?? 0;
+  const total = Math.max(0, baseTotal - discount);
+
+  async function applyCoupon() {
+    setCouponError("");
+    setCoupon(null);
+    if (!couponInput.trim()) return;
+    setCouponLoading(true);
+    const res = await fetch("/api/coupons/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: couponInput.trim(), orderTotal: baseTotal }),
+    });
+    const data = await res.json();
+    setCouponLoading(false);
+    if (res.ok) {
+      setCoupon(data);
+    } else {
+      setCouponError(data.error ?? "Invalid coupon.");
+    }
+  }
 
   async function handleSubmit(formData: FormData) {
     setIsPending(true);
+    if (coupon) {
+      formData.set("couponCode", coupon.code);
+      formData.set("discountAmount", coupon.discount.toString());
+    }
     await createOrder(formData);
   }
 
@@ -208,6 +244,47 @@ export default function CheckoutForm({
           ))}
         </div>
 
+        {/* Coupon input */}
+        <div className="border-t border-[#F0F0F0] pt-4 mb-4">
+          {coupon ? (
+            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+              <div>
+                <p className="text-xs font-bold text-[#006A38]">{coupon.message}</p>
+                <p className="text-[10px] text-[#757575]">Code: {coupon.code}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setCoupon(null); setCouponInput(""); }}
+                className="text-xs text-red-500 font-bold hover:underline ml-2"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-bold text-[#757575] uppercase mb-1.5">Coupon Code</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  placeholder="SAVE10"
+                  className="flex-1 text-sm border border-[#E0E0E0] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#006A38] uppercase"
+                />
+                <button
+                  type="button"
+                  onClick={applyCoupon}
+                  disabled={couponLoading || !couponInput.trim()}
+                  className="bg-[#F5F5F5] border border-[#E0E0E0] px-3 py-1.5 rounded-lg text-xs font-bold text-[#424242] hover:bg-emerald-50 disabled:opacity-50"
+                >
+                  {couponLoading ? "…" : "Apply"}
+                </button>
+              </div>
+              {couponError && <p className="text-xs text-red-600 mt-1">{couponError}</p>}
+            </div>
+          )}
+        </div>
+
         <div className="border-t border-[#E0E0E0] pt-4 space-y-2 text-xs font-medium">
           <div className="flex justify-between text-[#757575]">
             <span>Subtotal</span>
@@ -221,6 +298,12 @@ export default function CheckoutForm({
             <span>Shipping</span>
             <span className="font-bold text-[#212121]">{shippingFee === 0 ? "Free" : `₹${shippingFee.toFixed(2)}`}</span>
           </div>
+          {discount > 0 && (
+            <div className="flex justify-between text-emerald-700 font-bold">
+              <span>Discount ({coupon!.code})</span>
+              <span>−₹{discount.toFixed(2)}</span>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-[#E0E0E0] pt-4 mt-4">

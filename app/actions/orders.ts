@@ -34,7 +34,6 @@ export async function createOrder(formData: FormData): Promise<void> {
   });
 
   const shippingFee = calculateShippingFee(totalWeightGrams, subtotal);
-  const total = subtotal + taxTotal + shippingFee;
 
   const customerName = formData.get("name") as string;
   const email = ((formData.get("email") as string) || "").trim();
@@ -45,6 +44,9 @@ export async function createOrder(formData: FormData): Promise<void> {
   const zipCode = formData.get("zipCode") as string;
   const paymentMethod = formData.get("paymentMethod") as string | null;
   const isCod = paymentMethod === "cod";
+  const couponCode = (formData.get("couponCode") as string)?.trim() || null;
+  const discountAmount = couponCode ? parseFloat(formData.get("discountAmount") as string) || 0 : 0;
+  const total = Math.max(0, subtotal + taxTotal + shippingFee - discountAmount);
 
   let orderId: string;
 
@@ -77,8 +79,17 @@ export async function createOrder(formData: FormData): Promise<void> {
           currency: "INR",
           status: isCod ? "cod_pending" : "pending",
           paymentMethod: paymentMethod || undefined,
+          couponCode: couponCode || undefined,
+          discountAmount: discountAmount > 0 ? discountAmount : undefined,
         },
       });
+
+      if (couponCode) {
+        await tx.coupon.updateMany({
+          where: { code: couponCode },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
 
       for (const item of cartItems) {
         await tx.orderItem.create({
