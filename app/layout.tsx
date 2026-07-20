@@ -2,6 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { CartProvider } from "@/context/CartContext";
+import CookieConsent from "@/components/CookieConsent";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -42,6 +43,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="bg-white text-black antialiased font-sans">
         <CartProvider>{children}</CartProvider>
+        <CookieConsent />
       </body>
     </html>
   );

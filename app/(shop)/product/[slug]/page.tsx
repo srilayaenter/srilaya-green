@@ -3,10 +3,40 @@ import { notFound } from "next/navigation";
 import ProductPurchaseSection from "@/components/ProductPurchaseSection";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { toNum } from "@/lib/decimal";
+
+const BASE_URL = process.env.NEXTAUTH_URL ?? "https://srilayagreen.com";
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const product = await prisma.product.findUnique({ where: { slug: params.slug } });
-  return { title: product?.title ?? "Product" };
+  const product = await prisma.product.findUnique({
+    where: { slug: params.slug },
+    include: { variants: { where: { active: true }, orderBy: { price: "asc" }, take: 1 } },
+  });
+  if (!product) return { title: "Product Not Found" };
+
+  const lowestPrice = product.variants[0] ? toNum(product.variants[0].price) : null;
+  const description = product.description ?? `Buy ${product.title} — bioenzyme cleaning products from SriLaYa Green. Pan-India delivery.`;
+
+  return {
+    title: `${product.title} | SriLaYa Green`,
+    description,
+    openGraph: {
+      title: product.title,
+      description,
+      url: `${BASE_URL}/product/${product.slug}`,
+      type: "website",
+      images: product.imageUrl ? [{ url: product.imageUrl, alt: product.title }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.title,
+      description,
+      images: product.imageUrl ? [product.imageUrl] : [],
+    },
+    ...(lowestPrice !== null && {
+      other: { "product:price:amount": lowestPrice.toFixed(2), "product:price:currency": "INR" },
+    }),
+  };
 }
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
@@ -18,9 +48,34 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
   if (!product || !product.active) notFound();
 
   const defaultVariant = product.variants[0];
+  const lowestPrice = defaultVariant ? toNum(defaultVariant.price) : null;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    description: product.description ?? undefined,
+    image: product.imageUrl ?? undefined,
+    url: `${BASE_URL}/product/${product.slug}`,
+    brand: { "@type": "Brand", name: "SriLaYa Green" },
+    ...(lowestPrice !== null && {
+      offers: {
+        "@type": "Offer",
+        priceCurrency: "INR",
+        price: lowestPrice.toFixed(2),
+        availability: "https://schema.org/InStock",
+        url: `${BASE_URL}/product/${product.slug}`,
+      },
+    }),
+  };
 
   return (
     <div className="container mx-auto px-4 max-w-6xl py-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <nav className="text-xs text-[#9E9E9E] font-medium mb-6">
         <Link href="/product" className="hover:text-emerald-700">All Products</Link>
         {" / "}

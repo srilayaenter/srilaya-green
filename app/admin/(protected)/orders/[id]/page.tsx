@@ -2,13 +2,30 @@ import { prisma } from "@/lib/db";
 import { toNum } from "@/lib/decimal";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { sendEmail } from "@/lib/email";
+import { buildDeliveredEmail, buildDispatchEmail } from "@/lib/emails";
 
 async function updateStatus(formData: FormData) {
   "use server";
   const id = formData.get("orderId") as string;
   const status = formData.get("status") as string;
   const fulfillmentStatus = formData.get("fulfillmentStatus") as string;
-  await prisma.order.update({ where: { id }, data: { status, fulfillmentStatus } });
+  const order = await prisma.order.update({
+    where: { id },
+    data: { status, fulfillmentStatus },
+    include: { shipment: true },
+  });
+
+  if (status === "delivered" && order.email) {
+    const shortId = order.id.slice(0, 8).toUpperCase();
+    sendEmail({
+      to: order.email,
+      subject: `✅ Order Delivered — #${shortId}`,
+      html: buildDeliveredEmail({ customerName: order.customerName ?? "Customer", shortId }),
+      context: `order_delivered:${id}`,
+    }).catch(() => {});
+  }
+
   revalidatePath(`/admin/orders/${id}`);
   revalidatePath("/admin/orders");
 }
@@ -31,22 +48,35 @@ async function saveShipment(formData: FormData) {
   const orderId = formData.get("orderId") as string;
   const courier = formData.get("courier") as string;
   const trackingNumber = formData.get("trackingNumber") as string;
+  const trackingUrl = (formData.get("trackingUrl") as string)?.trim() || null;
   const estimatedDeliveryRaw = formData.get("estimatedDelivery") as string;
+  const shippedAtRaw = formData.get("shippedAt") as string;
+
+  const estimatedDelivery = estimatedDeliveryRaw ? new Date(estimatedDeliveryRaw) : null;
+  const shippedAt = shippedAtRaw ? new Date(shippedAtRaw) : null;
 
   await prisma.shipment.upsert({
     where: { orderId },
-    update: {
-      courier,
-      trackingNumber,
-      estimatedDelivery: estimatedDeliveryRaw ? new Date(estimatedDeliveryRaw) : null,
-    },
-    create: {
-      orderId,
-      courier,
-      trackingNumber,
-      estimatedDelivery: estimatedDeliveryRaw ? new Date(estimatedDeliveryRaw) : null,
-    },
+    update: { courier, trackingNumber, trackingUrl, shippedAt, estimatedDelivery },
+    create: { orderId, courier, trackingNumber, trackingUrl, shippedAt, estimatedDelivery },
   });
+
+  // Mark order as shipped and send dispatch email
+  const order = await prisma.order.update({
+    where: { id: orderId },
+    data: { status: "shipped" },
+  });
+
+  if (order.email) {
+    const shortId = order.id.slice(0, 8).toUpperCase();
+    sendEmail({
+      to: order.email,
+      subject: `🚚 Order Dispatched — #${shortId}`,
+      html: buildDispatchEmail({ customerName: order.customerName ?? "Customer", shortId, courier, trackingNumber, trackingUrl, estimatedDelivery }),
+      context: `order_shipped:${orderId}`,
+    }).catch(() => {});
+  }
+
   revalidatePath(`/admin/orders/${orderId}`);
 }
 
@@ -172,6 +202,19 @@ export default async function AdminOrderDetailPage({ params }: { params: { id: s
           <div>
             <label className="block text-[10px] font-bold text-[#757575] uppercase mb-1">Tracking Number</label>
             <input name="trackingNumber" defaultValue={order.shipment?.trackingNumber ?? ""} required className="border border-[#E0E0E0] rounded-lg px-3 py-2 text-sm w-40" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-[#757575] uppercase mb-1">Tracking URL</label>
+            <input name="trackingUrl" type="url" defaultValue={order.shipment?.trackingUrl ?? ""} placeholder="https://courier.com/track/..." className="border border-[#E0E0E0] rounded-lg px-3 py-2 text-sm w-64" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-[#757575] uppercase mb-1">Shipped At</label>
+            <input
+              name="shippedAt"
+              type="date"
+              defaultValue={order.shipment?.shippedAt ? new Date(order.shipment.shippedAt).toISOString().slice(0, 10) : ""}
+              className="border border-[#E0E0E0] rounded-lg px-3 py-2 text-sm"
+            />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-[#757575] uppercase mb-1">Est. Delivery</label>

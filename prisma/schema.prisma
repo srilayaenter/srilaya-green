@@ -134,6 +134,7 @@ model Order {
   state        String?
   zipCode      String?
 
+  returns   Return[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -155,7 +156,9 @@ model Shipment {
   order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   courier           String
   trackingNumber    String
+  trackingUrl       String?
   status            String    @default("booked")
+  shippedAt         DateTime?
   estimatedDelivery DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -166,4 +169,38 @@ model WebhookEvent {
   provider    String
   eventId     String   @unique
   processedAt DateTime @default(now())
+}
+
+model Return {
+  id        String       @id @default(cuid())
+  orderId   String
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reason    String
+  status    String       @default("requested") // requested | approved | rejected | received | refunded
+  adminNote String?
+  items     ReturnItem[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model ReturnItem {
+  id        String @id @default(cuid())
+  returnId  String
+  return    Return @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  variantId String
+  title     String
+  size      String
+  quantity  Int
+}
+
+model FailedEmail {
+  id           String    @id @default(cuid())
+  to           String
+  subject      String
+  html         String
+  context      String?
+  errorMessage String
+  retriedAt    DateTime?
+  resolved     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
 }

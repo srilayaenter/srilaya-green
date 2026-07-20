@@ -21,7 +21,7 @@ interface OrderData {
   state?: string;
   zipCode?: string;
   items: { title: string; size: string; quantity: number; price: number; gstRate: number }[];
-  shipment: { courier: string; trackingNumber: string; status: string; estimatedDelivery?: string | null } | null;
+  shipment: { courier: string; trackingNumber: string; trackingUrl?: string | null; status: string; shippedAt?: string | null; estimatedDelivery?: string | null } | null;
 }
 
 const FULFILLMENT_STEPS = ["pending", "processing", "completed"];
@@ -193,8 +193,22 @@ function TrackOrderContent() {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase font-bold text-[#9E9E9E] tracking-wider">Tracking No.</p>
-                    <p className="font-mono font-semibold mt-0.5">{order.shipment.trackingNumber}</p>
+                    {order.shipment.trackingUrl ? (
+                      <a href={order.shipment.trackingUrl} target="_blank" rel="noopener noreferrer" className="font-mono font-semibold mt-0.5 text-[#006A38] underline underline-offset-2 hover:text-[#00522B]">
+                        {order.shipment.trackingNumber} ↗
+                      </a>
+                    ) : (
+                      <p className="font-mono font-semibold mt-0.5">{order.shipment.trackingNumber}</p>
+                    )}
                   </div>
+                  {order.shipment.shippedAt && (
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-[#9E9E9E] tracking-wider">Shipped On</p>
+                      <p className="font-semibold mt-0.5">
+                        {new Date(order.shipment.shippedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                  )}
                   {order.shipment.estimatedDelivery && (
                     <div>
                       <p className="text-[10px] uppercase font-bold text-[#9E9E9E] tracking-wider">Est. Delivery</p>

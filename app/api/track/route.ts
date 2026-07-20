@@ -79,7 +79,9 @@ export async function POST(request: Request) {
       ? {
           courier: order.shipment.courier,
           trackingNumber: order.shipment.trackingNumber,
+          trackingUrl: order.shipment.trackingUrl,
           status: order.shipment.status,
+          shippedAt: order.shipment.shippedAt,
           estimatedDelivery: order.shipment.estimatedDelivery,
         }
       : null,
