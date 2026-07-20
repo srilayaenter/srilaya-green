@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import ProductPurchaseSection from "@/components/ProductPurchaseSection";
 import ProductGallery from "@/components/ProductGallery";
+import ReviewsSection from "@/components/ReviewsSection";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { toNum } from "@/lib/decimal";
@@ -45,7 +46,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const product = await prisma.product.findUnique({
     where: { slug },
-    include: { category: true, variants: { where: { active: true }, orderBy: { price: "asc" } }, images: { orderBy: { position: "asc" } } },
+    include: { category: true, variants: { where: { active: true }, orderBy: { price: "asc" } }, images: { orderBy: { position: "asc" } }, reviews: { where: { approved: true }, orderBy: { createdAt: "desc" } } },
   });
 
   if (!product || !product.active) notFound();
@@ -110,6 +111,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
       </div>
+
+      <ReviewsSection
+        productId={product.id}
+        reviews={product.reviews.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }))}
+      />
     </div>
   );
 }
