@@ -220,6 +220,14 @@ model ReturnItem {
   quantity  Int
 }
 
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
 model Coupon {
   id          String    @id @default(cuid())
   code        String    @unique

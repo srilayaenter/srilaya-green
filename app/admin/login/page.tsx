@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -73,6 +74,12 @@ export default function AdminLoginPage() {
           </div>
 
           {error && <p className="text-sm text-red-600 font-semibold">{error}</p>}
+
+          <div className="flex justify-end">
+            <Link href="/admin/forgot-password" className="text-xs text-[#006A38] font-semibold hover:underline">
+              Forgot password?
+            </Link>
+          </div>
 
           <button
             type="submit"
