@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { toNum } from "@/lib/decimal";
 import Link from "next/link";
 
-export default async function OrderDetailPage({ params }: { params: { id: string } }) {
+export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const order = await prisma.order.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { items: { include: { variant: { include: { product: true } } } }, shipment: true },
   });
 

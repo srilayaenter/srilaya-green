@@ -1,15 +1,17 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import ProductPurchaseSection from "@/components/ProductPurchaseSection";
+import ProductGallery from "@/components/ProductGallery";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { toNum } from "@/lib/decimal";
 
 const BASE_URL = process.env.NEXTAUTH_URL ?? "https://srilayagreen.com";
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
   const product = await prisma.product.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
     include: { variants: { where: { active: true }, orderBy: { price: "asc" }, take: 1 } },
   });
   if (!product) return { title: "Product Not Found" };
@@ -39,10 +41,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
+export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
   const product = await prisma.product.findUnique({
-    where: { slug: params.slug },
-    include: { category: true, variants: { where: { active: true }, orderBy: { price: "asc" } } },
+    where: { slug },
+    include: { category: true, variants: { where: { active: true }, orderBy: { price: "asc" } }, images: { orderBy: { position: "asc" } } },
   });
 
   if (!product || !product.active) notFound();
@@ -85,13 +88,11 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="relative aspect-square bg-[#F9F9F9] rounded-2xl border border-[#E0E0E0] overflow-hidden flex items-center justify-center">
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.title} className="max-h-full max-w-full object-contain p-8" />
-          ) : (
-            <span className="text-8xl opacity-40">🧴</span>
-          )}
-        </div>
+        <ProductGallery
+          images={product.images}
+          fallback={product.imageUrl}
+          title={product.title}
+        />
 
         <div>
           <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-2">

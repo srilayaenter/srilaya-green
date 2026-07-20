@@ -5,9 +5,10 @@ import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 import CartRefresher from "./CartRefresher";
 
-export default async function CodConfirmPage({ params }: { params: { id: string } }) {
+export default async function CodConfirmPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const order = await prisma.order.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { items: { include: { variant: { include: { product: true } } } } },
   });
 

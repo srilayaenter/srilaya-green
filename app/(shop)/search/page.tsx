@@ -4,8 +4,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Search Results" };
 
-export default async function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
-  const q = searchParams.q?.trim() ?? "";
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q: rawQ } = await searchParams;
+  const q = rawQ?.trim() ?? "";
 
   const products = q
     ? await prisma.product.findMany({

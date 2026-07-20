@@ -9,13 +9,15 @@ export const metadata: Metadata = { title: "All Products" };
 export default async function ProductListingPage({
   searchParams,
 }: {
-  searchParams: { sort?: string; category?: string };
+  searchParams: Promise<{ sort?: string; category?: string }>;
 }) {
+  const { sort, category } = await searchParams;
+
   const [products, categories] = await Promise.all([
     prisma.product.findMany({
       where: {
         active: true,
-        ...(searchParams.category ? { category: { slug: searchParams.category } } : {}),
+        ...(category ? { category: { slug: category } } : {}),
       },
       include: { category: true, variants: { where: { active: true }, orderBy: { price: "asc" } } },
       orderBy: { createdAt: "desc" },
@@ -26,8 +28,8 @@ export default async function ProductListingPage({
   const sorted = [...products].sort((a, b) => {
     const priceA = a.variants[0] ? toNum(a.variants[0].price) : 0;
     const priceB = b.variants[0] ? toNum(b.variants[0].price) : 0;
-    if (searchParams.sort === "price_asc") return priceA - priceB;
-    if (searchParams.sort === "price_desc") return priceB - priceA;
+    if (sort === "price_asc") return priceA - priceB;
+    if (sort === "price_desc") return priceB - priceA;
     return 0;
   });
 
@@ -42,14 +44,14 @@ export default async function ProductListingPage({
         <form className="flex gap-3">
           <select
             name="sort"
-            defaultValue={searchParams.sort ?? ""}
+            defaultValue={sort ?? ""}
             className="appearance-none bg-white border border-[#E0E0E0] rounded-xl px-3 py-2 text-sm font-medium text-[#424242]"
           >
             <option value="">Sort: Newest</option>
             <option value="price_asc">Price: Low to High</option>
             <option value="price_desc">Price: High to Low</option>
           </select>
-          {searchParams.category && <input type="hidden" name="category" value={searchParams.category} />}
+          {category && <input type="hidden" name="category" value={category} />}
           <button
             type="submit"
             className="bg-emerald-700 hover:bg-[#00522B] text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
@@ -62,9 +64,9 @@ export default async function ProductListingPage({
       {/* Category tabs */}
       <div className="flex flex-wrap gap-2 mb-8 border-b border-[#E0E0E0] pb-4">
         <Link
-          href={searchParams.sort ? `/product?sort=${searchParams.sort}` : "/product"}
+          href={sort ? `/product?sort=${sort}` : "/product"}
           className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wide transition-colors ${
-            !searchParams.category
+            !category
               ? "bg-emerald-700 text-white"
               : "bg-[#F5F5F5] text-[#424242] hover:bg-emerald-50 hover:text-emerald-700"
           }`}
@@ -72,10 +74,10 @@ export default async function ProductListingPage({
           All Products
         </Link>
         {categories.map((c) => {
-          const href = searchParams.sort
-            ? `/product?category=${c.slug}&sort=${searchParams.sort}`
+          const href = sort
+            ? `/product?category=${c.slug}&sort=${sort}`
             : `/product?category=${c.slug}`;
-          const active = searchParams.category === c.slug;
+          const active = category === c.slug;
           return (
             <Link
               key={c.id}

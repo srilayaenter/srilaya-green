@@ -57,9 +57,28 @@ async function deleteVariant(formData: FormData) {
   revalidatePath(`/admin/products/${productId}`);
 }
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
+async function addImage(formData: FormData) {
+  "use server";
+  const productId = formData.get("productId") as string;
+  const url = (formData.get("url") as string).trim();
+  const alt = (formData.get("alt") as string).trim() || null;
+  const existing = await prisma.productImage.count({ where: { productId } });
+  await prisma.productImage.create({ data: { productId, url, alt, position: existing } });
+  revalidatePath(`/admin/products/${productId}`);
+}
+
+async function deleteImage(formData: FormData) {
+  "use server";
+  const id = formData.get("imageId") as string;
+  const productId = formData.get("productId") as string;
+  await prisma.productImage.delete({ where: { id } });
+  revalidatePath(`/admin/products/${productId}`);
+}
+
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const [product, categories] = await Promise.all([
-    prisma.product.findUnique({ where: { id: params.id }, include: { variants: true } }),
+    prisma.product.findUnique({ where: { id }, include: { variants: true, images: { orderBy: { position: "asc" } } } }),
     prisma.category.findMany({ orderBy: { name: "asc" } }),
   ]);
 
@@ -145,6 +164,45 @@ export default async function EditProductPage({ params }: { params: { id: string
           </div>
           <button type="submit" className="bg-[#F5F5F5] border border-[#E0E0E0] px-4 py-2 rounded-lg text-sm font-bold text-[#424242] hover:bg-emerald-50">
             + Add Variant
+          </button>
+        </form>
+      </div>
+
+      {/* Gallery images */}
+      <div className="bg-white rounded-xl border border-[#E0E0E0] p-6">
+        <h2 className="text-sm font-bold text-[#212121] mb-1">Gallery Images</h2>
+        <p className="text-xs text-[#9E9E9E] mb-4">These display in the image carousel on the product page. The main Image URL above is used as fallback.</p>
+
+        {product.images.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {product.images.map((img) => (
+              <div key={img.id} className="relative group border border-[#E0E0E0] rounded-xl overflow-hidden aspect-square bg-[#F9F9F9]">
+                <img src={img.url} alt={img.alt ?? product.title} className="w-full h-full object-contain p-2" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <form action={deleteImage}>
+                    <input type="hidden" name="imageId" value={img.id} />
+                    <input type="hidden" name="productId" value={product.id} />
+                    <button type="submit" className="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Remove</button>
+                  </form>
+                </div>
+                {img.alt && <p className="text-[10px] text-center text-[#9E9E9E] px-1 pb-1 truncate">{img.alt}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form action={addImage} className="flex items-end gap-3 flex-wrap pt-3 border-t border-[#F0F0F0]">
+          <input type="hidden" name="productId" value={product.id} />
+          <div className="flex-1 min-w-48">
+            <label className="block text-[10px] font-bold text-[#757575] uppercase mb-1">Image URL *</label>
+            <input name="url" type="url" required placeholder="https://..." className="w-full border border-[#E0E0E0] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#006A38]" />
+          </div>
+          <div className="w-40">
+            <label className="block text-[10px] font-bold text-[#757575] uppercase mb-1">Alt Text</label>
+            <input name="alt" placeholder="e.g. Front view" className="w-full border border-[#E0E0E0] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#006A38]" />
+          </div>
+          <button type="submit" className="bg-[#006A38] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#00522B] transition-colors">
+            + Add Image
           </button>
         </form>
       </div>

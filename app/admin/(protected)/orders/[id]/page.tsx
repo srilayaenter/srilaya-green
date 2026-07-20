@@ -80,9 +80,10 @@ async function saveShipment(formData: FormData) {
   revalidatePath(`/admin/orders/${orderId}`);
 }
 
-export default async function AdminOrderDetailPage({ params }: { params: { id: string } }) {
+export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: orderId } = await params;
   const order = await prisma.order.findUnique({
-    where: { id: params.id },
+    where: { id: orderId },
     include: { items: { include: { variant: { include: { product: true } } } }, shipment: true },
   });
 

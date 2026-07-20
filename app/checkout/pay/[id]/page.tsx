@@ -3,8 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { toNum } from "@/lib/decimal";
 import PayButton from "./PayButton";
 
-export default async function PaymentGatewayPage({ params }: { params: { id: string } }) {
-  const order = await prisma.order.findUnique({ where: { id: params.id } });
+export default async function PaymentGatewayPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const order = await prisma.order.findUnique({ where: { id } });
 
   if (!order) notFound();
   if (order.status !== "pending") redirect("/product");

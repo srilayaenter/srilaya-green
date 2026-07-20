@@ -5,8 +5,8 @@ import { toNum } from "@/lib/decimal";
 import { calculateShippingFee } from "@/lib/shipping";
 import CheckoutForm from "@/components/CheckoutForm";
 
-export default async function CheckoutPage({ searchParams }: { searchParams: { error?: string } }) {
-  const { error } = searchParams;
+export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
   const cartId = (await cookies()).get("cartId")?.value;
 
   const cartItems = cartId

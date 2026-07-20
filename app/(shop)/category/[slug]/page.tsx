@@ -3,13 +3,15 @@ import ProductCard from "@/components/ProductCard";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const category = await prisma.category.findUnique({ where: { slug: params.slug } });
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const category = await prisma.category.findUnique({ where: { slug } });
   return { title: category?.name ?? "Category" };
 }
 
-export default async function CategoryPage({ params }: { params: { slug: string } }) {
-  const category = await prisma.category.findUnique({ where: { slug: params.slug } });
+export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const category = await prisma.category.findUnique({ where: { slug } });
   if (!category) notFound();
 
   const products = await prisma.product.findMany({
