@@ -14,13 +14,13 @@ export async function addToCart(variantId: string, quantity: number = 1) {
     if (!variant) return { success: false, error: "Product variant not found" };
     if (variant.stock < quantity) return { success: false, error: "Insufficient stock" };
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     let cartId = cookieStore.get("cartId")?.value;
 
     if (!cartId) {
       const newCart = await prisma.cart.create({ data: {} });
       cartId = newCart.id;
-      cookieStore.set("cartId", cartId, {
+      cookieStore.set("cartId", cartId!, {
         maxAge: 60 * 60 * 24 * 7,
         httpOnly: true,
         path: "/",

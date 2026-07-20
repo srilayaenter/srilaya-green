@@ -7,7 +7,7 @@ import CheckoutForm from "@/components/CheckoutForm";
 
 export default async function CheckoutPage({ searchParams }: { searchParams: { error?: string } }) {
   const { error } = searchParams;
-  const cartId = cookies().get("cartId")?.value;
+  const cartId = (await cookies()).get("cartId")?.value;
 
   const cartItems = cartId
     ? await prisma.cartItem.findMany({

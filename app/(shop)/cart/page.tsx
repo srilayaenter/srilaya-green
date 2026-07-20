@@ -9,7 +9,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = { title: "Your Cart" };
 
 export default async function CartPage() {
-  const cartId = cookies().get("cartId")?.value;
+  const cartId = (await cookies()).get("cartId")?.value;
 
   const items = cartId
     ? await prisma.cartItem.findMany({

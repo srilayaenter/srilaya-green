@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
-  const cartId = cookies().get("cartId")?.value;
+  const cartId = (await cookies()).get("cartId")?.value;
   if (!cartId) return NextResponse.json({ count: 0 });
 
   const items = await prisma.cartItem.findMany({ where: { cartId }, select: { quantity: true } });

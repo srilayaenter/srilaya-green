@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 
 const productQuery = {
   include: { variants: { where: { active: true }, orderBy: { price: "asc" as const } } },
-} satisfies Prisma.ProductFindManyArgs;
+};
 
 const FALLBACK_COLORS = [
   "from-emerald-900/80 to-emerald-700/50",

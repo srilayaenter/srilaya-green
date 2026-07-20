@@ -9,7 +9,7 @@ import { sendEmail } from "@/lib/email";
 import { buildOrderConfirmationEmail } from "@/lib/emails";
 
 export async function createOrder(formData: FormData): Promise<void> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const cartId = cookieStore.get("cartId")?.value;
 
   if (!cartId) redirect("/cart");

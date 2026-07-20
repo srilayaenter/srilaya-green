@@ -12,6 +12,10 @@ const nextConfig = {
       { protocol: "https", hostname: "placehold.co" },
       { protocol: "https", hostname: "*.supabase.co" },
     ],
+    // placehold.co serves SVG that Next's built-in optimizer can't reliably sniff/proxy.
+    // These are v1 placeholder images only — skip optimization rather than fight it;
+    // revisit once real product photography replaces the placeholders.
+    unoptimized: true,
   },
   async headers() {
     return [

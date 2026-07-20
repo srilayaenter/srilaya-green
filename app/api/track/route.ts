@@ -21,7 +21,7 @@ function checkRateLimit(ip: string): boolean {
 }
 
 export async function POST(request: Request) {
-  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (!checkRateLimit(ip)) {
     return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
   }

@@ -2,5 +2,14 @@ node_modules
 .next
 .env
 .env*.local
+*.env.test
 *.tsbuildinfo
 next-env.d.ts
+
+# npm lockfile — project uses pnpm
+package-lock.json
+
+# Playwright
+/test-results/
+/tests/report/
+/playwright-report/

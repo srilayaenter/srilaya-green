@@ -8,14 +8,40 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Admin-only accounts. Customers check out as guests (cartId cookie) and
-// look up orders via /track — no customer accounts in v1.
+// Admin-only accounts (role = "admin" | "owner").
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   password  String
   role      String   @default("admin")
   createdAt DateTime @default(now())
+}
+
+// Customer accounts — optional; guests can still check out without registering.
+// Account + Session mirror the naturals.com schema so credentials can be shared
+// across all SriLaYa sites when the unified auth layer is implemented (issue #34).
+model Account {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  passwordHash      String
+  name              String?
+  phone             String?
+  emailVerified     Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  sessions          Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  token     String   @unique @default(cuid())
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([accountId])
+  @@index([token])
 }
 
 model Category {

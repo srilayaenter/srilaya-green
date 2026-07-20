@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const cartId = cookies().get("cartId")?.value;
+    const cartId = (await cookies()).get("cartId")?.value;
     if (cartId) await prisma.cartItem.deleteMany({ where: { cartId } });
 
     return NextResponse.json({ success: true, message: "Payment verified successfully", paymentId: razorpay_payment_id });
