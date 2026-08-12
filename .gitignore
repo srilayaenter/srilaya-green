@@ -19,3 +19,6 @@ tests/e2e/.auth/
 
 # Business documents (real address/phone/GSTIN — keep out of git history)
 packaging/
+
+.vercel
+.env*
