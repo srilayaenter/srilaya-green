@@ -76,13 +76,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           SHA="${{ github.sha }}"
-          STABLE_URL="https://srilaya-green.vercel.app"
           echo "Waiting for Vercel deployment (SHA: $SHA)..."
 
           DEPLOY_FOUND=false
           for i in $(seq 1 18); do
             DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20" 2>/dev/null || echo "[]")
-            DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r 'map(select(.environment | ascii_downcase | test("preview|production"))) | first | .id // empty')
+            DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r 'if type == "array" then (map(select(.environment | ascii_downcase | test("preview|production"))) | first | .id // empty) else empty end')
             if [ -n "$DEPLOY_ID" ] && [ "$DEPLOY_ID" != "null" ]; then
               echo "Found deployment $DEPLOY_ID (attempt $i)"
               DEPLOY_FOUND=true
@@ -91,21 +90,32 @@ jobs:
             echo "No deployment yet (attempt $i/18)"; sleep 10
           done
 
-          if [ "$DEPLOY_FOUND" = "true" ]; then
-            for j in $(seq 1 36); do
-              STATE=$(gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" 2>/dev/null | jq -r 'first | .state // empty')
-              echo "  state=$STATE (poll $j/36)"
-              if   [ "$STATE" = "success" ]; then break
-              elif [ "$STATE" = "failure" ] || [ "$STATE" = "error" ]; then
-                echo "ERROR: Vercel build failed — aborting tests"; exit 1
-              fi
-              sleep 10
-            done
-          else
-            echo "WARNING: No GitHub Deployment found — proceeding with stable URL"
+          if [ "$DEPLOY_FOUND" != "true" ]; then
+            echo "ERROR: No GitHub Deployment found for this SHA — aborting tests"
+            exit 1
           fi
 
-          echo "url=$STABLE_URL" >> "$GITHUB_OUTPUT"
+          DEPLOY_URL=""
+          for j in $(seq 1 36); do
+            STATUS_JSON=$(gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" 2>/dev/null || echo "[]")
+            STATE=$(echo "$STATUS_JSON" | jq -r 'if type == "array" then (first | .state // empty) else empty end')
+            echo "  state=$STATE (poll $j/36)"
+            if [ "$STATE" = "success" ]; then
+              DEPLOY_URL=$(echo "$STATUS_JSON" | jq -r 'first | .environment_url // .target_url // empty')
+              break
+            elif [ "$STATE" = "failure" ] || [ "$STATE" = "error" ]; then
+              echo "ERROR: Vercel build failed — aborting tests"; exit 1
+            fi
+            sleep 10
+          done
+
+          if [ -z "$DEPLOY_URL" ] || [ "$DEPLOY_URL" = "null" ]; then
+            echo "ERROR: Deployment did not report a URL in time — aborting tests"
+            exit 1
+          fi
+
+          echo "Deployment ready: $DEPLOY_URL"
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
 
       - name: Run E2E tests
         id: run
