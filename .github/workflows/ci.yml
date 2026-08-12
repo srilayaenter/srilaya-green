@@ -135,12 +135,10 @@ jobs:
           COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
           DATE=$(date -u '+%d %b %Y %H:%M UTC')
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          BODY=$(printf '**Trigger:** Push to %s\n**Commit:** `%s` (%s)\n**Actions run:** %s\n\nCheck the Actions run for the Playwright HTML report and failure details.' \
+            "${{ github.ref_name }}" "$COMMIT_SHORT" "${{ github.sha }}" "$RUN_URL")
           gh issue create \
             --title "CI: E2E tests failed on ${{ github.ref_name }} (${COMMIT_SHORT}) — ${DATE}" \
-            --body "**Trigger:** Push to ${{ github.ref_name }}
-**Commit:** \`${COMMIT_SHORT}\` (${{ github.sha }})
-**Actions run:** ${RUN_URL}
-
-Check the Actions run for the Playwright HTML report and failure details." \
+            --body "$BODY" \
             --label "bug" \
             --repo "${{ github.repository }}" || true

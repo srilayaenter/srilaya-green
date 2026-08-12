@@ -139,10 +139,18 @@ function TrackOrderContent() {
                     className={`inline-block mt-1 text-xs font-bold px-2.5 py-1 rounded-full ${
                       order.status === "paid" || order.status === "cod_pending"
                         ? "bg-green-50 text-green-700"
+                        : order.status === "failed"
+                        ? "bg-red-50 text-red-700"
                         : "bg-amber-50 text-amber-700"
                     }`}
                   >
-                    {order.status === "paid" ? "✓ Payment Confirmed" : order.status === "cod_pending" ? "Pay on Delivery" : "⏳ Payment Pending"}
+                    {order.status === "paid"
+                      ? "✓ Payment Confirmed"
+                      : order.status === "cod_pending"
+                      ? "Pay on Delivery"
+                      : order.status === "failed"
+                      ? "✗ Payment Failed"
+                      : "⏳ Payment Pending"}
                   </span>
                 </div>
               </div>

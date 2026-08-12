@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
+import { sendEmail } from "@/lib/email";
+import { toNum } from "@/lib/decimal";
+import { BRAND } from "@/lib/brand";
 
 export async function POST(request: Request) {
   try {
@@ -39,8 +42,27 @@ export async function POST(request: Request) {
           for (const item of orderItems) {
             await tx.productVariant.update({ where: { id: item.variantId }, data: { stock: { increment: item.quantity } } });
           }
-          await tx.order.update({ where: { id: order.id }, data: { status: "cancelled" } });
+          await tx.order.update({ where: { id: order.id }, data: { status: "failed" } });
         });
+
+        const adminEmail = process.env.ADMIN_ALERT_EMAIL || BRAND.email;
+        const reason = payment.error_description || payment.error_reason || "No reason given by Razorpay";
+        sendEmail({
+          to: adminEmail,
+          subject: `⚠️ Payment Failed — Order #${order.id.slice(0, 8).toUpperCase()}`,
+          html: `<div style="font-family:Arial,sans-serif;max-width:480px;">
+            <h2 style="color:#B91C1C;">Payment Failed</h2>
+            <p>A Razorpay payment failed for the order below. Stock has already been released back automatically.</p>
+            <table style="width:100%;font-size:14px;color:#424242;border-collapse:collapse;">
+              <tr><td style="padding:6px 0;font-weight:bold;width:110px;">Order</td><td>#${order.id.slice(0, 8).toUpperCase()}</td></tr>
+              <tr><td style="padding:6px 0;font-weight:bold;">Customer</td><td>${order.customerName ?? "—"} (${order.email ?? "—"})</td></tr>
+              <tr><td style="padding:6px 0;font-weight:bold;">Amount</td><td>₹${toNum(order.total).toFixed(2)}</td></tr>
+              <tr><td style="padding:6px 0;font-weight:bold;">Reason</td><td>${reason}</td></tr>
+              <tr><td style="padding:6px 0;font-weight:bold;">Razorpay Payment ID</td><td style="font-family:monospace;">${payment.id ?? "—"}</td></tr>
+            </table>
+          </div>`,
+          context: `payment_failed:${order.id}`,
+        }).catch(() => {});
       }
     }
 

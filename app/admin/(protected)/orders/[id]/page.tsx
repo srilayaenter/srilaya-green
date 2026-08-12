@@ -174,6 +174,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               <option value="processing">Processing</option>
               <option value="shipped">Shipped</option>
               <option value="delivered">Delivered</option>
+              <option value="failed">Payment Failed</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
