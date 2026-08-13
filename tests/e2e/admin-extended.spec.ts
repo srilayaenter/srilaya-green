@@ -4,6 +4,7 @@
  * All tests use the pre-authenticated adminPage fixture from globalSetup / storageState.
  */
 import { test, expect } from "@playwright/test";
+import { cookieConsentStorageState } from "./helpers/cookieConsent";
 
 // Re-use authenticated session from storageState configured in playwright.config.ts
 // Each test starts with the admin already logged in.
@@ -139,9 +140,13 @@ test.describe("Admin extended pages", () => {
   // own SSO wall instead of the app.
   const freshUnauthContext = (browser: import("@playwright/test").Browser) => {
     const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    const baseURL = process.env.TEST_BASE_URL || "http://localhost:3001";
     return browser.newContext({
-      storageState: undefined,
-      baseURL: process.env.TEST_BASE_URL || "http://localhost:3001",
+      // Unauthenticated (no admin session cookie), but the cookie-consent
+      // banner's localStorage flag still needs pre-seeding — that's a
+      // separate concern from auth.
+      storageState: cookieConsentStorageState(baseURL),
+      baseURL,
       extraHTTPHeaders: bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : undefined,
     });
   };

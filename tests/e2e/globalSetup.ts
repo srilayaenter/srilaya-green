@@ -1,5 +1,6 @@
 import { chromium, FullConfig } from "@playwright/test";
 import { loginAsAdmin } from "./helpers/auth";
+import { cookieConsentStorageState } from "./helpers/cookieConsent";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -13,6 +14,7 @@ export default async function globalSetup(config: FullConfig) {
     extraHTTPHeaders: bypassSecret
       ? { "x-vercel-protection-bypass": bypassSecret }
       : {},
+    storageState: cookieConsentStorageState(baseURL),
   });
 
   // Establish Vercel preview bypass cookie (no-op locally or on production)
