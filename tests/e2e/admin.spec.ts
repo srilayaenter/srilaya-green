@@ -4,6 +4,7 @@
  */
 import { test, expect } from "@playwright/test";
 import { loginAsAdmin } from "./helpers/auth";
+import { deleteTestProduct, deleteTestVariant } from "./helpers/db";
 
 // These tests intentionally start unauthenticated (ADM-01..04 exercise the
 // login/redirect flow itself), so they can't reuse globalSetup's storageState —
@@ -74,8 +75,9 @@ test("ADM-08 create a new product and reach its edit page", async ({ page }) => 
   await page.goto("/admin/products/new");
 
   const stamp = Date.now();
+  const slug = `automated-test-product-${stamp}`;
   await page.locator("input[name='title']").fill(`Automated Test Product ${stamp}`);
-  await page.locator("input[name='slug']").fill(`automated-test-product-${stamp}`);
+  await page.locator("input[name='slug']").fill(slug);
   await page.locator("input[name='sku']").fill(`ATP-${stamp}`);
   await page.locator("input[name='gstRate']").fill("18");
   // First category option is fine — form requires a selection but doesn't care which
@@ -84,9 +86,15 @@ test("ADM-08 create a new product and reach its edit page", async ({ page }) => 
   await page.locator("input[name='variantPrice']").fill("199");
   await page.locator("input[name='variantStock']").fill("50");
 
-  await page.getByRole("button", { name: /create product/i }).click();
-  await page.waitForURL(/\/admin\/products\/.+/, { timeout: 15000 });
-  await expect(page.locator("input[name='title']")).toHaveValue(`Automated Test Product ${stamp}`);
+  try {
+    await page.getByRole("button", { name: /create product/i }).click();
+    await page.waitForURL(/\/admin\/products\/.+/, { timeout: 15000 });
+    await expect(page.locator("input[name='title']")).toHaveValue(`Automated Test Product ${stamp}`);
+  } finally {
+    // Otherwise this leaks into the live catalog and pollutes "first
+    // product" assumptions in customer-facing tests (e.g. CART-02).
+    await deleteTestProduct(slug);
+  }
 });
 
 test("ADM-09 product edit page loads with variants", async ({ page }) => {
@@ -124,15 +132,22 @@ test("ADM-11 add a variant to a product", async ({ page }) => {
   await page.waitForLoadState("networkidle");
 
   const stamp = Date.now();
+  const sku = `VAR-${stamp}`;
   const addForm = page.locator("form").filter({ has: page.locator("input[name='size']") });
   await addForm.locator("input[name='size']").fill(`TST${stamp}`.slice(0, 8));
-  await addForm.locator("input[name='sku']").fill(`VAR-${stamp}`);
+  await addForm.locator("input[name='sku']").fill(sku);
   await addForm.locator("input[name='price']").fill("99");
   await addForm.locator("input[name='stock']").fill("10");
-  await addForm.getByRole("button", { name: /add variant/i }).click();
 
-  await page.waitForLoadState("networkidle");
-  await expect(page.getByText(`VAR-${stamp}`)).toBeVisible();
+  try {
+    await addForm.getByRole("button", { name: /add variant/i }).click();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(sku)).toBeVisible();
+  } finally {
+    // Otherwise this leaks into the live catalog and pollutes "first
+    // variant" assumptions in customer-facing tests (e.g. CART-02).
+    await deleteTestVariant(sku);
+  }
 });
 
 test("ADM-12 toggle product active state", async ({ page }) => {

@@ -65,7 +65,9 @@ test("PROD-05 product detail has breadcrumb nav linking back to category", async
   const firstLink = page.locator("a[href^='/product/']").first();
   const href = await firstLink.getAttribute("href");
   await page.goto(href!, { waitUntil: "networkidle" });
-  const allProductsLink = page.getByRole("link", { name: /all products/i });
+  // Scoped to <main> — header and footer also have "All Products" links,
+  // which makes the unscoped locator ambiguous (strict mode violation).
+  const allProductsLink = page.getByRole("main").getByRole("link", { name: /all products/i });
   await expect(allProductsLink).toBeVisible();
   await expect(allProductsLink).toHaveAttribute("href", "/product");
 });
@@ -137,7 +139,8 @@ test("PROD-12 pincode check shows unserviceable for known blocked pin", async ({
   const checkBtn = page.getByRole("button", { name: /check/i });
   await checkBtn.click();
   await page.waitForTimeout(1000);
-  await expect(page.getByText(/not serviceable|unavailable|not available/i).first()).toBeVisible();
+  // Actual copy from app/api/pincode-check/route.ts's UNSERVICEABLE_PREFIXES branch
+  await expect(page.getByText(/don't deliver/i).first()).toBeVisible();
 });
 
 test("PROD-13 reviews section renders on product detail", async ({ page }) => {
