@@ -16,15 +16,15 @@ const prisma = new PrismaClient();
 export async function deleteTestProduct(slug: string) {
   try {
     await prisma.product.delete({ where: { slug } });
-  } catch {
-    // already gone, or DB unreachable — fine either way for a cleanup step
+  } catch (e) {
+    console.error("[deleteTestProduct] DEBUG:", (e as Error).message, "DATABASE_URL set:", !!process.env.DATABASE_URL);
   }
 }
 
 export async function deleteTestVariant(sku: string) {
   try {
     await prisma.productVariant.delete({ where: { sku } });
-  } catch {
-    // already gone, or DB unreachable — fine either way for a cleanup step
+  } catch (e) {
+    console.error("[deleteTestVariant] DEBUG:", (e as Error).message, "DATABASE_URL set:", !!process.env.DATABASE_URL);
   }
 }
