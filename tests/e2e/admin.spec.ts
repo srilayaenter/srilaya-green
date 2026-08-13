@@ -5,6 +5,21 @@
 import { test, expect } from "@playwright/test";
 import { loginAsAdmin } from "./helpers/auth";
 
+// These tests intentionally start unauthenticated (ADM-01..04 exercise the
+// login/redirect flow itself), so they can't reuse globalSetup's storageState —
+// each one calls loginAsAdmin() fresh. That means every page in this file needs
+// its own Vercel protection-bypass header, same as the other spec files.
+test.beforeEach(async ({ page }) => {
+  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (bypassSecret) {
+    await page.route("**/*", (route) =>
+      route.continue({
+        headers: { ...route.request().headers(), "x-vercel-protection-bypass": bypassSecret },
+      })
+    );
+  }
+});
+
 // ─── Auth & RBAC ────────────────────────────────────────────────────────────
 
 test("ADM-01 admin login redirects to dashboard", async ({ page }) => {
