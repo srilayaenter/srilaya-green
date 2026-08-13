@@ -47,9 +47,12 @@ test("ADM-04 already-authenticated admin visiting /admin/login redirects to /adm
 
 test("ADM-05 dashboard shows KPI cards", async ({ page }) => {
   await loginAsAdmin(page);
-  await expect(page.getByText(/total orders/i)).toBeVisible();
-  await expect(page.getByText(/^products$/i)).toBeVisible();
-  await expect(page.getByText(/^revenue$/i)).toBeVisible();
+  // Scoped to <main> — the sidebar nav also has a "Products" link, which
+  // makes the unscoped locator ambiguous (strict mode violation).
+  const main = page.getByRole("main");
+  await expect(main.getByText(/total orders/i)).toBeVisible();
+  await expect(main.getByText(/^products$/i)).toBeVisible();
+  await expect(main.getByText(/^revenue$/i)).toBeVisible();
 });
 
 test("ADM-06 dashboard recent orders table renders", async ({ page }) => {
