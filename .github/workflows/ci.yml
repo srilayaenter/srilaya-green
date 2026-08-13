@@ -127,6 +127,12 @@ jobs:
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
           TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          # Without this, tests/e2e/helpers/db.ts's cleanup silently no-ops
+          # (no .env exists in the CI checkout for Prisma to auto-load), so
+          # every run's ADM-08/ADM-11 tests leak a stray product/variant
+          # into the shared staging catalog and never clean it up.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
           CI: "true"
         run: pnpm exec playwright test --project=chromium --reporter=list
 
