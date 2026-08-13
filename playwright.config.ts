@@ -25,6 +25,12 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "off",
+    // Covers the standalone `request` fixture (e.g. request.get("/api/...")),
+    // which page.route() bypass hooks in individual spec files don't reach —
+    // that's a separate HTTP client, not tied to page navigation.
+    extraHTTPHeaders: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
+      : undefined,
   },
   projects: [
     {
