@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import { Page, expect } from "@playwright/test";
 
 /** Navigates to /product, opens the first product, and clicks Add to Cart. */
 export async function addFirstProductToCart(page: Page, qty = 1): Promise<void> {
@@ -15,7 +15,11 @@ export async function addFirstProductToCart(page: Page, qty = 1): Promise<void> 
   }
 
   await page.getByRole("button", { name: /add to cart/i }).click();
-  await page.waitForTimeout(600);
+  // Wait for the actual completion signal (server action + cart-count
+  // refresh both resolved) instead of a flat delay — a fixed timeout can be
+  // outlasted by a cold Vercel serverless function, and unlike a random
+  // race, that fails identically on every retry.
+  await expect(page.getByText("Added!")).toBeVisible({ timeout: 15000 });
 }
 
 /** Empties the cart by navigating to /cart and removing all items. */
