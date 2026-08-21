@@ -102,7 +102,7 @@ async function createRealOnlineOrder(page: import("@playwright/test").Page, prod
   await page.locator("input[type='tel'], input[name='phone']").first().fill("9999999999", { timeout: 15000 });
   await page.locator("input[name='address'], textarea[name='address'], input[placeholder*='address' i]").first().fill("123 Staging Test Street", { timeout: 15000 });
   await page.locator("input[name='city'], input[placeholder*='city' i]").first().fill("Bangalore", { timeout: 15000 });
-  await page.locator("input[name='pincode'], input[placeholder*='pincode' i]").first().fill("560001", { timeout: 15000 });
+  await page.locator("input[name='zipCode'], input[name='pincode'], input[placeholder*='pincode' i]").first().fill("560001", { timeout: 15000 });
   const stateInput = page.locator("input[name='state'], select[name='state'], input[placeholder*='state' i]").first();
   if (await stateInput.isVisible({ timeout: 5000 }).catch(() => false)) {
     const tag = await stateInput.evaluate((el) => el.tagName.toLowerCase());
