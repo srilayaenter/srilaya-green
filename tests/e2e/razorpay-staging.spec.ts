@@ -86,30 +86,37 @@ async function cleanup(orderId: string | undefined, productId: string, eventIds:
 /** Drives the real checkout form for a single synthetic product, selecting "Pay Online" (the
  * default), and returns the dbOrderId minted by the real createOrder server action. */
 async function createRealOnlineOrder(page: import("@playwright/test").Page, productSlug: string) {
-  await page.goto(`/product/${productSlug}`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /add to cart/i }).click();
+  console.log(`[RZP trace] goto /product/${productSlug}`);
+  await page.goto(`/product/${productSlug}`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  console.log("[RZP trace] product page loaded, clicking Add to Cart");
+  await page.getByRole("button", { name: /add to cart/i }).click({ timeout: 30000 });
   await expect(page.getByText("Added!")).toBeVisible({ timeout: 15000 });
+  console.log("[RZP trace] added to cart, going to /checkout");
 
-  await page.goto("/checkout", { waitUntil: "networkidle" });
+  await page.goto("/checkout", { waitUntil: "domcontentloaded", timeout: 30000 });
+  console.log("[RZP trace] checkout page loaded, filling form");
 
   const stamp = Date.now();
-  await page.locator("input[name='name'], input[placeholder*='name' i]").first().fill(`RZP Test ${stamp}`);
-  await page.locator("input[type='email'], input[name='email']").first().fill(`rzp-staging-test-${stamp}@example.invalid`);
-  await page.locator("input[type='tel'], input[name='phone']").first().fill("9999999999");
-  await page.locator("input[name='address'], textarea[name='address'], input[placeholder*='address' i]").first().fill("123 Staging Test Street");
-  await page.locator("input[name='city'], input[placeholder*='city' i]").first().fill("Bangalore");
-  await page.locator("input[name='pincode'], input[placeholder*='pincode' i]").first().fill("560001");
+  await page.locator("input[name='name'], input[placeholder*='name' i]").first().fill(`RZP Test ${stamp}`, { timeout: 15000 });
+  await page.locator("input[type='email'], input[name='email']").first().fill(`rzp-staging-test-${stamp}@example.invalid`, { timeout: 15000 });
+  await page.locator("input[type='tel'], input[name='phone']").first().fill("9999999999", { timeout: 15000 });
+  await page.locator("input[name='address'], textarea[name='address'], input[placeholder*='address' i]").first().fill("123 Staging Test Street", { timeout: 15000 });
+  await page.locator("input[name='city'], input[placeholder*='city' i]").first().fill("Bangalore", { timeout: 15000 });
+  await page.locator("input[name='pincode'], input[placeholder*='pincode' i]").first().fill("560001", { timeout: 15000 });
   const stateInput = page.locator("input[name='state'], select[name='state'], input[placeholder*='state' i]").first();
-  if (await stateInput.isVisible()) {
+  if (await stateInput.isVisible({ timeout: 5000 }).catch(() => false)) {
     const tag = await stateInput.evaluate((el) => el.tagName.toLowerCase());
-    if (tag === "select") await stateInput.selectOption({ index: 1 });
-    else await stateInput.fill("Karnataka");
+    if (tag === "select") await stateInput.selectOption({ index: 1 }, { timeout: 15000 });
+    else await stateInput.fill("Karnataka", { timeout: 15000 });
   }
+  console.log("[RZP trace] form filled, clicking Continue to Payment");
 
   // "Pay Online" is the form's default selection — no radio click needed.
   const continueBtn = page.getByRole("button", { name: /continue to payment|pay/i });
-  await continueBtn.click();
-  await page.waitForURL(/\/checkout\/pay\//, { timeout: 15000 });
+  await continueBtn.click({ timeout: 15000 });
+  console.log("[RZP trace] clicked, waiting for /checkout/pay/ redirect");
+  await page.waitForURL(/\/checkout\/pay\//, { timeout: 30000 });
+  console.log(`[RZP trace] landed on ${page.url()}`);
 
   const match = page.url().match(/\/checkout\/pay\/([^/?#]+)/);
   if (!match) throw new Error(`Expected to land on /checkout/pay/<id>, got ${page.url()}`);
@@ -134,7 +141,9 @@ test("RZP-01 real order + real Razorpay order creation + genuinely signed verify
     expect(variantAfterCreate?.stock).toBe(startingStock - 1); // decremented at order-creation time
 
     // Real call to the app's own endpoint — this genuinely hits Razorpay's test-mode Orders API.
-    const orderRes = await page.request.post("/api/payments/razorpay/order", { data: { dbOrderId: orderId } });
+    console.log("[RZP trace] calling /api/payments/razorpay/order");
+    const orderRes = await page.request.post("/api/payments/razorpay/order", { data: { dbOrderId: orderId }, timeout: 30000 });
+    console.log(`[RZP trace] order endpoint responded status=${orderRes.status()}`);
     expect(orderRes.status()).toBe(200);
     const orderData = await orderRes.json();
     expect(orderData.success).toBe(true);
@@ -291,7 +300,9 @@ test("RZP-04 invalid verification signature is rejected and the order is not mar
   try {
     orderId = await createRealOnlineOrder(page, productSlug);
 
-    const orderRes = await page.request.post("/api/payments/razorpay/order", { data: { dbOrderId: orderId } });
+    console.log("[RZP trace] calling /api/payments/razorpay/order");
+    const orderRes = await page.request.post("/api/payments/razorpay/order", { data: { dbOrderId: orderId }, timeout: 30000 });
+    console.log(`[RZP trace] order endpoint responded status=${orderRes.status()}`);
     expect(orderRes.status()).toBe(200);
     const orderData = await orderRes.json();
 
