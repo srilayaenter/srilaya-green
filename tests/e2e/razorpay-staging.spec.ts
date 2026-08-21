@@ -117,6 +117,7 @@ async function createRealOnlineOrder(page: import("@playwright/test").Page, prod
 }
 
 test("RZP-01 real order + real Razorpay order creation + genuinely signed verify reaches paid, stock decremented exactly once", async ({ page }) => {
+  test.setTimeout(120000); // full checkout-form flow + a real external Razorpay API round-trip is heavier than the 60s default
   test.skip(!RAZORPAY_KEY_SECRET || !RAZORPAY_WEBHOOK_SECRET, "RAZORPAY_KEY_SECRET/RAZORPAY_WEBHOOK_SECRET not available to the test runner");
 
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -208,6 +209,7 @@ test("RZP-01 real order + real Razorpay order creation + genuinely signed verify
 });
 
 test("RZP-02 payment dismissal/abandonment leaves order pending and stock reserved, untouched by verify/webhook", async ({ page }) => {
+  test.setTimeout(120000); // full checkout-form flow + a real external Razorpay API round-trip is heavier than the 60s default
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const { productId, productSlug, variantId, startingStock } = await makeSyntheticCatalog(stamp);
   let orderId: string | undefined;
@@ -227,6 +229,7 @@ test("RZP-02 payment dismissal/abandonment leaves order pending and stock reserv
 });
 
 test("RZP-03 payment.failed webhook marks order failed and restores stock exactly once, even on duplicate delivery", async ({ page }) => {
+  test.setTimeout(120000); // full checkout-form flow + a real external Razorpay API round-trip is heavier than the 60s default
   test.skip(!RAZORPAY_WEBHOOK_SECRET, "RAZORPAY_WEBHOOK_SECRET not available to the test runner");
 
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -278,6 +281,7 @@ test("RZP-03 payment.failed webhook marks order failed and restores stock exactl
 });
 
 test("RZP-04 invalid verification signature is rejected and the order is not marked paid", async ({ page }) => {
+  test.setTimeout(120000); // full checkout-form flow + a real external Razorpay API round-trip is heavier than the 60s default
   test.skip(!RAZORPAY_KEY_SECRET, "RAZORPAY_KEY_SECRET not available to the test runner");
 
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
