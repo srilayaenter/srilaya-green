@@ -78,7 +78,12 @@ test("NAV-08 product detail has og:image meta tag", async ({ page }) => {
   const firstLink = page.locator("a[href^='/product/']").first();
   const href = await firstLink.getAttribute("href");
   await page.goto(href!, { waitUntil: "networkidle" });
-  const ogImage = await page.locator("meta[property='og:image']").getAttribute("content");
+  // locator().getAttribute() auto-waits for the element to appear and times
+  // out if it never does — it does NOT return null for a genuinely absent
+  // tag. Check count() first (resolves immediately) so a product with no
+  // image doesn't hang the test for the full timeout.
+  const ogImageTag = page.locator("meta[property='og:image']");
+  const ogImage = (await ogImageTag.count()) > 0 ? await ogImageTag.getAttribute("content") : null;
   // May be absent if product has no image — just check no crash
   await expect(page).not.toHaveTitle(/500|server error/i);
 });
