@@ -138,9 +138,9 @@ jobs:
           gh issue create \
             --title "CI: E2E tests failed on ${{ github.ref_name }} (${COMMIT_SHORT}) — ${DATE}" \
             --body "**Trigger:** Push to ${{ github.ref_name }}
-**Commit:** \`${COMMIT_SHORT}\` (${{ github.sha }})
-**Actions run:** ${RUN_URL}
+          **Commit:** \`${COMMIT_SHORT}\` (${{ github.sha }})
+          **Actions run:** ${RUN_URL}
 
-Check the Actions run for the Playwright HTML report and failure details." \
+          Check the Actions run for the Playwright HTML report and failure details." \
             --label "bug" \
             --repo "${{ github.repository }}" || true
