@@ -4,6 +4,7 @@
  * All tests use the pre-authenticated adminPage fixture from globalSetup / storageState.
  */
 import { test, expect } from "@playwright/test";
+import { cookieConsentStorageState } from "./helpers/cookieConsent";
 
 // Re-use authenticated session from storageState configured in playwright.config.ts
 // Each test starts with the admin already logged in.
@@ -132,9 +133,27 @@ test.describe("Admin extended pages", () => {
     await expect(titleInput.first()).toBeVisible();
   });
 
+  // browser.newContext() doesn't inherit playwright.config.ts's `use` block
+  // (baseURL, extraHTTPHeaders) — only the fixture-provided context/page does.
+  // These three tests need a fresh unauthenticated context, so they must pass
+  // the Vercel bypass header explicitly or every request here hits Vercel's
+  // own SSO wall instead of the app.
+  const freshUnauthContext = (browser: import("@playwright/test").Browser) => {
+    const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    const baseURL = process.env.TEST_BASE_URL || "http://localhost:3001";
+    return browser.newContext({
+      // Unauthenticated (no admin session cookie), but the cookie-consent
+      // banner's localStorage flag still needs pre-seeding — that's a
+      // separate concern from auth.
+      storageState: cookieConsentStorageState(baseURL),
+      baseURL,
+      extraHTTPHeaders: bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : undefined,
+    });
+  };
+
   test("ADMX-15 unauthenticated /admin/coupons redirects to login", async ({ browser }) => {
     // Use a fresh context with no session to test auth guard
-    const ctx = await browser.newContext({ storageState: undefined });
+    const ctx = await freshUnauthContext(browser);
     const page = await ctx.newPage();
     await page.goto("/admin/coupons");
     await expect(page).toHaveURL(/\/admin\/login/);
@@ -142,7 +161,7 @@ test.describe("Admin extended pages", () => {
   });
 
   test("ADMX-16 unauthenticated /admin/reviews redirects to login", async ({ browser }) => {
-    const ctx = await browser.newContext({ storageState: undefined });
+    const ctx = await freshUnauthContext(browser);
     const page = await ctx.newPage();
     await page.goto("/admin/reviews");
     await expect(page).toHaveURL(/\/admin\/login/);
@@ -150,7 +169,7 @@ test.describe("Admin extended pages", () => {
   });
 
   test("ADMX-17 admin login with wrong password shows error", async ({ browser }) => {
-    const ctx = await browser.newContext({ storageState: undefined });
+    const ctx = await freshUnauthContext(browser);
     const page = await ctx.newPage();
     await page.goto("/admin/login", { waitUntil: "networkidle" });
     await page.locator("input[type='email'], input[name='email']").first().fill("admin@srilayafoods.com");

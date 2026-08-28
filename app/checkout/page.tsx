@@ -18,7 +18,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
 
   if (cartItems.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center text-[#212121]">
+      <main className="container mx-auto px-4 py-16 text-center text-[#212121]">
         <span className="text-4xl block mb-4">🛒</span>
         <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
         <Link href="/product">
@@ -26,7 +26,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             Continue Shopping
           </button>
         </Link>
-      </div>
+      </main>
     );
   }
 
@@ -44,7 +44,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   }));
 
   return (
-    <div className="container mx-auto px-4 py-8 text-[#212121]">
+    <main className="container mx-auto px-4 py-8 text-[#212121]">
       <h1 className="text-3xl font-extrabold mb-8 tracking-tight text-[#212121]">Checkout</h1>
 
       {error && (
@@ -52,6 +52,6 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       )}
 
       <CheckoutForm cartItems={serialisedItems} subtotal={subtotal} taxTotal={taxTotal} shippingFee={shippingFee} />
-    </div>
+    </main>
   );
 }

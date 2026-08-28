@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { cookieConsentStorageState } from "./tests/e2e/helpers/cookieConsent";
 
 // .env.test holds real per-machine test credentials (gitignored) — load it into
 // process.env so ADMIN_USER picks up real values.
@@ -7,6 +8,8 @@ try {
 } catch {
   // .env.test not present — helpers fall back to their hardcoded defaults where they have one.
 }
+
+const baseURL = process.env.TEST_BASE_URL || "http://localhost:3001";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -21,10 +24,17 @@ export default defineConfig({
   timeout: 60000,
   reporter: [["html", { outputFolder: "tests/report" }], ["list"]],
   use: {
-    baseURL: process.env.TEST_BASE_URL || "http://localhost:3001",
+    baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "off",
+    // Covers the standalone `request` fixture (e.g. request.get("/api/...")),
+    // which page.route() bypass hooks in individual spec files don't reach —
+    // that's a separate HTTP client, not tied to page navigation.
+    extraHTTPHeaders: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? { "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
+      : undefined,
+    storageState: cookieConsentStorageState(baseURL),
   },
   projects: [
     {

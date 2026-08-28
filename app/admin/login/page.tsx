@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] font-sans pb-20 mt-12 px-4">
+    <main className="flex flex-col items-center justify-center min-h-[80vh] font-sans pb-20 mt-12 px-4">
       <div className="text-center mb-8 flex flex-col items-center">
         <h1 className="text-[32px] font-black text-[#212121] tracking-tight">
           SriLaYa <span className="text-[#006A38]">Green</span>
@@ -90,6 +90,6 @@ export default function AdminLoginPage() {
           </button>
         </form>
       </div>
-    </div>
+    </main>
   );
 }

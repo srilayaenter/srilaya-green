@@ -5,6 +5,7 @@ on:
     branches: [master, staging]
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -20,8 +21,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
@@ -48,8 +47,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
@@ -58,6 +55,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -80,13 +80,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           SHA="${{ github.sha }}"
-          STABLE_URL="https://srilaya-green.vercel.app"
           echo "Waiting for Vercel deployment (SHA: $SHA)..."
 
           DEPLOY_FOUND=false
           for i in $(seq 1 18); do
             DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20" 2>/dev/null || echo "[]")
-            DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r 'map(select(.environment | ascii_downcase | test("preview|production"))) | first | .id // empty')
+            DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r 'if type == "array" then (map(select(.environment | ascii_downcase | test("preview|production"))) | first | .id // empty) else empty end')
             if [ -n "$DEPLOY_ID" ] && [ "$DEPLOY_ID" != "null" ]; then
               echo "Found deployment $DEPLOY_ID (attempt $i)"
               DEPLOY_FOUND=true
@@ -95,27 +94,52 @@ jobs:
             echo "No deployment yet (attempt $i/18)"; sleep 10
           done
 
-          if [ "$DEPLOY_FOUND" = "true" ]; then
-            for j in $(seq 1 36); do
-              STATE=$(gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" 2>/dev/null | jq -r 'first | .state // empty')
-              echo "  state=$STATE (poll $j/36)"
-              if   [ "$STATE" = "success" ]; then break
-              elif [ "$STATE" = "failure" ] || [ "$STATE" = "error" ]; then
-                echo "ERROR: Vercel build failed — aborting tests"; exit 1
-              fi
-              sleep 10
-            done
-          else
-            echo "WARNING: No GitHub Deployment found — proceeding with stable URL"
+          if [ "$DEPLOY_FOUND" != "true" ]; then
+            echo "ERROR: No GitHub Deployment found for this SHA — aborting tests"
+            exit 1
           fi
 
-          echo "url=$STABLE_URL" >> "$GITHUB_OUTPUT"
+          DEPLOY_URL=""
+          for j in $(seq 1 36); do
+            STATUS_JSON=$(gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" 2>/dev/null || echo "[]")
+            STATE=$(echo "$STATUS_JSON" | jq -r 'if type == "array" then (first | .state // empty) else empty end')
+            echo "  state=$STATE (poll $j/36)"
+            if [ "$STATE" = "success" ]; then
+              DEPLOY_URL=$(echo "$STATUS_JSON" | jq -r 'first | .environment_url // .target_url // empty')
+              break
+            elif [ "$STATE" = "failure" ] || [ "$STATE" = "error" ]; then
+              echo "ERROR: Vercel build failed — aborting tests"; exit 1
+            fi
+            sleep 10
+          done
+
+          if [ -z "$DEPLOY_URL" ] || [ "$DEPLOY_URL" = "null" ]; then
+            echo "ERROR: Deployment did not report a URL in time — aborting tests"
+            exit 1
+          fi
+
+          echo "Deployment ready: $DEPLOY_URL"
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
 
       - name: Run E2E tests
         id: run
         env:
           TEST_BASE_URL: ${{ steps.preview.outputs.url }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+          TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # Used only to independently compute matching Razorpay verify/webhook
+          # signatures in tests/e2e/razorpay-staging.spec.ts — the deployed app
+          # reads its own copy of these from Vercel; both must match exactly.
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+          # Without this, tests/e2e/helpers/db.ts's cleanup silently no-ops
+          # (no .env exists in the CI checkout for Prisma to auto-load), so
+          # every run's ADM-08/ADM-11 tests leak a stray product/variant
+          # into the shared staging catalog and never clean it up.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
           CI: "true"
         run: pnpm exec playwright test --project=chromium --reporter=list
 
@@ -135,12 +159,10 @@ jobs:
           COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
           DATE=$(date -u '+%d %b %Y %H:%M UTC')
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          BODY=$(printf '**Trigger:** Push to %s\n**Commit:** `%s` (%s)\n**Actions run:** %s\n\nCheck the Actions run for the Playwright HTML report and failure details.' \
+            "${{ github.ref_name }}" "$COMMIT_SHORT" "${{ github.sha }}" "$RUN_URL")
           gh issue create \
             --title "CI: E2E tests failed on ${{ github.ref_name }} (${COMMIT_SHORT}) — ${DATE}" \
-            --body "**Trigger:** Push to ${{ github.ref_name }}
-**Commit:** \`${COMMIT_SHORT}\` (${{ github.sha }})
-**Actions run:** ${RUN_URL}
-
-Check the Actions run for the Playwright HTML report and failure details." \
+            --body "$BODY" \
             --label "bug" \
             --repo "${{ github.repository }}" || true

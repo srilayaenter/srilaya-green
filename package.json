@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
+    "label:pdf": "node scripts/render-label-pdf.mjs",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
@@ -18,6 +19,7 @@
   },
   "dependencies": {
     "@prisma/client": "6.19.0",
+    "@sentry/nextjs": "^10.70.0",
     "autoprefixer": "10.4.19",
     "bcryptjs": "2.4.3",
     "next": "^15.5.20",

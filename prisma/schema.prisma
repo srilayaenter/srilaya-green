@@ -144,7 +144,7 @@ model Order {
   shippingFee       Decimal     @db.Decimal(10, 2)
   total             Decimal     @db.Decimal(10, 2)
   currency          String      @default("INR")
-  status            String      @default("pending") // pending | cod_pending | paid | processing | shipped | delivered | cancelled
+  status            String      @default("pending") // pending | cod_pending | paid | processing | shipped | delivered | cancelled | failed
   fulfillmentStatus String      @default("pending")
   paymentMethod     String? // cod | razorpay
   paymentId         String?
