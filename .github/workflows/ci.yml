@@ -112,6 +112,20 @@ jobs:
         env:
           TEST_BASE_URL: ${{ steps.preview.outputs.url }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+          TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # Used only to independently compute matching Razorpay verify/webhook
+          # signatures in tests/e2e/razorpay-staging.spec.ts — the deployed app
+          # reads its own copy of these from Vercel; both must match exactly.
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+          # Without this, tests/e2e/helpers/db.ts's cleanup silently no-ops
+          # (no .env exists in the CI checkout for Prisma to auto-load), so
+          # every run's ADM-08/ADM-11 tests leak a stray product/variant
+          # into the shared staging catalog and never clean it up.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
           CI: "true"
         run: pnpm exec playwright test --project=chromium --reporter=list
 
