@@ -1,0 +1,123 @@
+name: Weekly full test suite
+
+# Runs every Friday at 08:00 IST (02:30 UTC) as a safety net, independent of
+# pushes — catches drift/flakiness even in a week with no commits.
+# Opens a GitHub issue on any failure.
+
+on:
+  schedule:
+    - cron: '30 2 * * 5'   # Friday 08:00 IST
+  workflow_dispatch:         # allow manual trigger from the Actions tab
+
+jobs:
+  full-suite:
+    name: Full suite (staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('**/package.json') }}
+
+      - name: Install Playwright (chromium only)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Install Playwright system deps (cached hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - name: Wait for Vercel staging deployment
+        id: preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA="${{ github.sha }}"
+          STABLE_URL="https://srilaya-green-git-staging-avrsrikanth-4431s-projects.vercel.app"
+          echo "Waiting for Vercel deployment (SHA: $SHA)..."
+
+          DEPLOY_FOUND=false
+          for i in $(seq 1 18); do
+            DEPLOY_JSON=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20" 2>/dev/null || echo "[]")
+            DEPLOY_ID=$(echo "$DEPLOY_JSON" | jq -r 'map(select(.environment | ascii_downcase | test("preview"))) | first | .id // empty')
+            if [ -n "$DEPLOY_ID" ] && [ "$DEPLOY_ID" != "null" ]; then
+              echo "Found deployment $DEPLOY_ID (attempt $i)"
+              DEPLOY_FOUND=true
+              break
+            fi
+            echo "No deployment yet (attempt $i/18)"; sleep 10
+          done
+
+          if [ "$DEPLOY_FOUND" = "true" ]; then
+            for j in $(seq 1 36); do
+              STATE=$(gh api "repos/${{ github.repository }}/deployments/$DEPLOY_ID/statuses" 2>/dev/null | jq -r 'first | .state // empty')
+              echo "  state=$STATE (poll $j/36)"
+              if   [ "$STATE" = "success" ]; then break
+              elif [ "$STATE" = "failure" ] || [ "$STATE" = "error" ]; then
+                echo "ERROR: Vercel build failed — aborting tests"; exit 1
+              fi
+              sleep 10
+            done
+          else
+            echo "WARNING: No GitHub Deployment found — proceeding with stable branch URL"
+          fi
+
+          echo "url=$STABLE_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Run full test suite
+        id: run
+        env:
+          TEST_BASE_URL: ${{ steps.preview.outputs.url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+          TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          CI: "true"
+        run: pnpm exec playwright test --project=chromium --reporter=list
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report-${{ github.run_id }}
+          path: tests/report/
+          retention-days: 14
+
+      - name: Create issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          DATE=$(date -u '+%d %b %Y')
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          BODY=$(printf '**Trigger:** Weekly scheduled run (Friday 08:00 IST)\n**Branch:** staging (HEAD)\n**Commit:** `%s` (%s)\n**Actions run:** %s\n\nCheck the Actions run for the Playwright HTML report and failure details.' \
+            "$COMMIT_SHORT" "${{ github.sha }}" "$RUN_URL")
+          gh issue create \
+            --title "CI: Weekly full suite failed (${DATE})" \
+            --body "$BODY" \
+            --label "bug,test" \
+            --repo "${{ github.repository }}" || true
